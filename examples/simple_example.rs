@@ -37,7 +37,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     
     commands.spawn(SceneBundle {
-        scene: asset_server.load("example.gltf"),
+        scene: asset_server.load("example.gltf#Scene0"),
         ..default()
     });
 }
