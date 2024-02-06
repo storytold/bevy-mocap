@@ -1,0 +1,23 @@
+{
+  "take" : 5,
+  "appVersion" : "v1.3.2 (build 99)",
+  "version" : 1,
+  "slate" : "shapekey_BevyImplementationFaceCap",
+  "endTimestamp" : {
+    "value" : 752734762050191,
+    "timescale" : 1000000000
+  },
+  "endTimecode" : "15:25:03:48.842",
+  "date" : "2024-02-05T15:24:53Z",
+  "deviceModel" : "iPhone16,2",
+  "subject" : "ScottiPhone",
+  "frames" : 593,
+  "videoTargetFrameRate" : 60,
+  "startTimecode" : "15:24:53:55.906",
+  "calibrated" : true,
+  "startTimestamp" : {
+    "timescale" : 1000000000,
+    "value" : 752724879631186
+  },
+  "identifier" : "20240205_shapekey_BevyImplementationFaceCap_5"
+}
