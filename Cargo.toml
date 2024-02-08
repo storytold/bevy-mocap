@@ -4,19 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
+[lib]
 
 [dependencies]
 bevy = { version = "0.12", default-features = false, features = ["bevy_pbr", "bevy_render", "bevy_asset", "animation", "bevy_animation"]}
-serde = "1"
+serde = { version = "1", features = ["derive"] }
+csv = "1.3"
 
 [dev-dependencies]
 bevy = { version = "0.12", default-features = true }
-dexterous_developer = "0.1"
 bevy-inspector-egui = "0.22"
-
-
-[[example]]
-name = "simple_example"
-path = "examples/simple_example.rs"
-crate-type = ["dylib"]
