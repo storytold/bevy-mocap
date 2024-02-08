@@ -1,9 +1,15 @@
 use std::{num::ParseFloatError, str::FromStr};
 
-
+use bevy::{
+    animation::{AnimationClip, EntityPath, Keyframes, VariableCurve},
+    asset::{Asset, AssetLoader, AsyncReadExt},
+    reflect::Reflect,
+};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Reflect, Default,
+)]
 pub struct Timestamp {
     hour: u8,
     minute: u8,
@@ -83,13 +89,13 @@ impl FromStr for Timestamp {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Reflect)]
 pub struct CSVFrame {
     pub timestamp: Timestamp,
     pub morphs: Vec<f32>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Reflect, Asset)]
 pub struct CSVAnimation {
     pub frames: Vec<CSVFrame>,
     pub morph_names: Vec<String>,
@@ -196,9 +202,87 @@ impl CSVAnimation {
     }
 }
 
+impl From<CSVAnimation> for VariableCurve {
+    fn from(value: CSVAnimation) -> Self {
+        let mut keyframe_timestamps = Vec::with_capacity(value.frames.len());
+        let mut keyframes = Vec::with_capacity(value.frames.len() * value.morph_names.len());
+
+        let seconds_per_frame = 1.0 / (value.fps as f32);
+        for (frame, data) in value.frames.iter().enumerate() {
+            let time = (frame as f32) * seconds_per_frame;
+            let mut morphs = data.morphs.clone();
+            keyframe_timestamps.push(time);
+            keyframes.append(&mut morphs);
+        }
+
+        Self {
+            keyframe_timestamps,
+            keyframes: Keyframes::Weights(keyframes),
+        }
+    }
+}
+
+impl From<CSVAnimation> for AnimationClip {
+    fn from(val: CSVAnimation) -> Self {
+        let mut clip = Self::default();
+        clip.add_curve_to_path(EntityPath::default(), val.into());
+
+        clip
+    }
+}
+
+#[derive(Default)]
+pub struct CSVAnimationLoader;
+
+#[non_exhaustive]
+#[derive(Debug)]
+pub enum CSVAnimationLoaderError {
+    Io(std::io::Error),
+    CSVParseError(CSVParseError),
+}
+
+impl std::fmt::Display for CSVAnimationLoaderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{self:?}"))
+    }
+}
+
+impl std::error::Error for CSVAnimationLoaderError {}
+
+impl AssetLoader for CSVAnimationLoader {
+    type Asset = AnimationClip;
+
+    type Settings = ();
+
+    type Error = CSVAnimationLoaderError;
+
+    fn load<'a>(
+        &'a self,
+        reader: &'a mut bevy::asset::io::Reader,
+        _settings: &'a Self::Settings,
+        _load_context: &'a mut bevy::asset::LoadContext,
+    ) -> bevy::utils::BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
+        Box::pin(async move {
+            let mut csv = String::new();
+            reader
+                .read_to_string(&mut csv)
+                .await
+                .map_err(CSVAnimationLoaderError::Io)?;
+            let csv_animation =
+                CSVAnimation::parse(&csv).map_err(CSVAnimationLoaderError::CSVParseError)?;
+            Ok(csv_animation.into())
+        })
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["morph_anim.csv"]
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    
+
+    use bevy::animation::{AnimationClip, EntityPath, Keyframes};
 
     use crate::{CSVAnimation, CSVParseError, Timestamp, TimestampParseError};
     #[test]
@@ -324,7 +408,43 @@ mod tests {
 00:00:00:00.00, 0, 0.1, 0.5",
         )
         .unwrap();
-        assert!(&result.frames.first().unwrap().morphs[0] - 0.1 < 0.0001);
-        assert!(&result.frames.first().unwrap().morphs[1] - 0.5 < 0.0001);
+        assert!((&result.frames.first().unwrap().morphs[0] - 0.1).abs() < 0.0001);
+        assert!((&result.frames.first().unwrap().morphs[1] - 0.5).abs() < 0.0001);
+    }
+
+    #[test]
+    fn can_convert_an_animation_into_an_animation_clip() {
+        let animation = CSVAnimation::parse(
+            "timecode, blendshapecount, shape_1, shape_2
+00:00:00:00.00, 0, 1.0, 0
+00:00:00:01.00, 0, 0, -0.4
+00:00:00:02.00, 0, 0, 0
+00:00:01:00.00, 0, 0, 0
+00:00:01:01.00, 0, 0, 0",
+        )
+        .unwrap();
+        let clip: AnimationClip = animation.into();
+        assert!(clip.duration() - 1.33333 < 0.1);
+        let curves = clip
+            .get_curves_by_path(&EntityPath::default())
+            .unwrap()
+            .first()
+            .unwrap();
+        assert_eq!(curves.keyframe_timestamps.len(), 5);
+        assert!((curves.keyframe_timestamps[0] - 0.0).abs() < 0.001);
+        assert!((curves.keyframe_timestamps[1] - 0.33333).abs() < 0.001);
+        assert!((curves.keyframe_timestamps[2] - 0.66666).abs() < 0.01);
+        assert!((curves.keyframe_timestamps[3] - 1.0).abs() < 0.01);
+        assert!((curves.keyframe_timestamps[4] - 1.33333).abs() < 0.01);
+
+        let Keyframes::Weights(keyframes) = &curves.keyframes else {
+            panic!("Keyframes aren't weights")
+        };
+
+        assert_eq!(keyframes.len(), 10);
+        assert!((keyframes[0] - 1.0).abs() < 0.0001);
+        assert!((keyframes[1] - 0.0).abs() < 0.0001);
+        assert!((keyframes[2] - 0.0).abs() < 0.0001);
+        assert!((keyframes[3] + 0.4).abs() < 0.0001);
     }
 }
