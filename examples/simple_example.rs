@@ -1,7 +1,10 @@
+#![allow(clippy::type_complexity)]
+
 use bevy::{
     pbr::{CascadeShadowConfigBuilder, DirectionalLightShadowMap},
     prelude::*,
 };
+use bevy_facial_mocap::{CSVAnimationLoader, CSVAnimationLoaderSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 fn main() {
@@ -9,9 +12,14 @@ fn main() {
         .insert_resource(DirectionalLightShadowMap { size: 4096 })
         .add_plugins(DefaultPlugins)
         .add_plugins(WorldInspectorPlugin::new())
+        .init_asset_loader::<CSVAnimationLoader>()
         .add_systems(Startup, setup)
+        .add_systems(Update, setup_animation)
         .run();
 }
+
+#[derive(Component)]
+struct AnimationRunning(Handle<AnimationClip>);
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera3dBundle {
@@ -41,4 +49,14 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         scene: asset_server.load("example.gltf#Scene0"),
         ..default()
     });
+}
+
+fn setup_animation(mut commands: Commands, asset_server: Res<AssetServer>, mut players: Query<Entity, (With<MorphWeights>, Without<AnimationRunning>)>) {
+    for entity in &mut players {
+        let handle = asset_server.load_with_settings("20240205_shapekey_BevyImplementationFaceCap_5/shapekey_BevyImplementationFaceCap_5_ScottiPhone_raw.morph_anim.csv", |s: &mut CSVAnimationLoaderSettings| { s.0.parts = vec![Name::new("pascal_Head")]; });
+        let mut player = AnimationPlayer::default();
+        player.play(handle.clone()).repeat();
+        
+        commands.entity(entity).insert((AnimationRunning(handle), player));
+    }
 }

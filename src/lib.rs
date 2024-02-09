@@ -1,11 +1,9 @@
 use std::{num::ParseFloatError, str::FromStr};
 
 use bevy::{
-    animation::{AnimationClip, EntityPath, Keyframes, VariableCurve},
-    asset::{Asset, AssetLoader, AsyncReadExt},
-    reflect::Reflect,
+    animation::{self, AnimationClip, EntityPath, Keyframes, VariableCurve}, asset::{meta::Settings, Asset, AssetLoader, AsyncReadExt}, core::Name, reflect::Reflect
 };
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(
     Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Reflect, Default,
@@ -222,10 +220,10 @@ impl From<CSVAnimation> for VariableCurve {
     }
 }
 
-impl From<CSVAnimation> for AnimationClip {
-    fn from(val: CSVAnimation) -> Self {
-        let mut clip = Self::default();
-        clip.add_curve_to_path(EntityPath::default(), val.into());
+impl CSVAnimation {
+    fn generate_clip(self, path: &EntityPath) -> AnimationClip {
+        let mut clip = AnimationClip::default();
+        clip.add_curve_to_path(path.clone(), self.into());
 
         clip
     }
@@ -249,17 +247,38 @@ impl std::fmt::Display for CSVAnimationLoaderError {
 
 impl std::error::Error for CSVAnimationLoaderError {}
 
+#[derive(Default)]
+pub struct CSVAnimationLoaderSettings(pub EntityPath);
+
+impl Serialize for CSVAnimationLoaderSettings {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer {
+        let names = self.0.parts.iter().map(|name| name.to_string()).collect::<Vec<String>>();
+        names.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for CSVAnimationLoaderSettings {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de> {
+        let names = Vec::<String>::deserialize(deserializer)?;
+        Ok(CSVAnimationLoaderSettings(EntityPath { parts: names.into_iter().map(|name| Name::new(name)).collect() }))
+    }
+}
+
 impl AssetLoader for CSVAnimationLoader {
     type Asset = AnimationClip;
 
-    type Settings = ();
+    type Settings = CSVAnimationLoaderSettings;
 
     type Error = CSVAnimationLoaderError;
 
     fn load<'a>(
         &'a self,
         reader: &'a mut bevy::asset::io::Reader,
-        _settings: &'a Self::Settings,
+        settings: &'a Self::Settings,
         _load_context: &'a mut bevy::asset::LoadContext,
     ) -> bevy::utils::BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
         Box::pin(async move {
@@ -270,7 +289,10 @@ impl AssetLoader for CSVAnimationLoader {
                 .map_err(CSVAnimationLoaderError::Io)?;
             let csv_animation =
                 CSVAnimation::parse(&csv).map_err(CSVAnimationLoaderError::CSVParseError)?;
-            Ok(csv_animation.into())
+
+            let animation = csv_animation.generate_clip(&settings.0);
+
+            Ok(animation)
         })
     }
 
@@ -423,7 +445,7 @@ mod tests {
 00:00:01:01.00, 0, 0, 0",
         )
         .unwrap();
-        let clip: AnimationClip = animation.into();
+        let clip: AnimationClip = animation.generate_clip(&EntityPath::default());
         assert!(clip.duration() - 1.33333 < 0.1);
         let curves = clip
             .get_curves_by_path(&EntityPath::default())
