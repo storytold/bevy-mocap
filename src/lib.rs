@@ -1,9 +1,13 @@
 use std::{num::ParseFloatError, str::FromStr};
 
 use bevy::{
-    animation::{self, AnimationClip, EntityPath, Keyframes, VariableCurve}, asset::{meta::Settings, Asset, AssetLoader, AsyncReadExt}, core::Name, log::info, reflect::Reflect
+    animation::{AnimationClip, EntityPath, Keyframes, VariableCurve},
+    asset::{Asset, AssetLoader, AsyncReadExt},
+    core::Name,
+    log::info,
+    reflect::Reflect,
 };
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(
     Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Reflect, Default,
@@ -253,8 +257,14 @@ pub struct CSVAnimationLoaderSettings(pub EntityPath);
 impl Serialize for CSVAnimationLoaderSettings {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer {
-        let names = self.0.parts.iter().map(|name| name.to_string()).collect::<Vec<String>>();
+        S: serde::Serializer,
+    {
+        let names = self
+            .0
+            .parts
+            .iter()
+            .map(|name| name.to_string())
+            .collect::<Vec<String>>();
         names.serialize(serializer)
     }
 }
@@ -262,9 +272,12 @@ impl Serialize for CSVAnimationLoaderSettings {
 impl<'de> Deserialize<'de> for CSVAnimationLoaderSettings {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de> {
+        D: serde::Deserializer<'de>,
+    {
         let names = Vec::<String>::deserialize(deserializer)?;
-        Ok(CSVAnimationLoaderSettings(EntityPath { parts: names.into_iter().map(|name| Name::new(name)).collect() }))
+        Ok(CSVAnimationLoaderSettings(EntityPath {
+            parts: names.into_iter().map(Name::new).collect(),
+        }))
     }
 }
 
@@ -290,7 +303,11 @@ impl AssetLoader for CSVAnimationLoader {
             let csv_animation =
                 CSVAnimation::parse(&csv).map_err(CSVAnimationLoaderError::CSVParseError)?;
 
-                info!("Parsed Animation - got {} FPS with {} total frames", csv_animation.fps, csv_animation.frames.len());
+            info!(
+                "Parsed Animation - got {} FPS with {} total frames",
+                csv_animation.fps,
+                csv_animation.frames.len()
+            );
 
             let animation = csv_animation.generate_clip(&settings.0);
 
