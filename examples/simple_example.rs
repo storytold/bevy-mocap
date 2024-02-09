@@ -53,7 +53,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn setup_animation(mut commands: Commands, asset_server: Res<AssetServer>, mut players: Query<Entity, (With<MorphWeights>, Without<AnimationRunning>)>) {
     for entity in &mut players {
-        let handle = asset_server.load_with_settings("20240205_shapekey_BevyImplementationFaceCap_5/shapekey_BevyImplementationFaceCap_5_ScottiPhone_raw.morph_anim.csv", |s: &mut CSVAnimationLoaderSettings| { s.0.parts = vec![Name::new("pascal_Head")]; });
+        let handle = asset_server.load_with_settings("20240205_shapekey_BevyImplementationFaceCap_5/fake_test.morph_anim.csv", |s: &mut CSVAnimationLoaderSettings| { s.0.parts = vec![Name::new("pascal_Head")]; });
         let mut player = AnimationPlayer::default();
         player.play(handle.clone()).repeat();
         

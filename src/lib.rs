@@ -1,7 +1,7 @@
 use std::{num::ParseFloatError, str::FromStr};
 
 use bevy::{
-    animation::{self, AnimationClip, EntityPath, Keyframes, VariableCurve}, asset::{meta::Settings, Asset, AssetLoader, AsyncReadExt}, core::Name, reflect::Reflect
+    animation::{self, AnimationClip, EntityPath, Keyframes, VariableCurve}, asset::{meta::Settings, Asset, AssetLoader, AsyncReadExt}, core::Name, log::info, reflect::Reflect
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -290,7 +290,11 @@ impl AssetLoader for CSVAnimationLoader {
             let csv_animation =
                 CSVAnimation::parse(&csv).map_err(CSVAnimationLoaderError::CSVParseError)?;
 
+                info!("Parsed Animation - got {} FPS with {} total frames", csv_animation.fps, csv_animation.frames.len());
+
             let animation = csv_animation.generate_clip(&settings.0);
+
+            info!("Clip has duration of {}", animation.duration());
 
             Ok(animation)
         })
