@@ -348,8 +348,12 @@ impl AssetLoader for CSVAnimationLoader {
             );
 
             let mapping = if let Some(mapping) = clip_info.mapping {
-                let mapping = load_context.read_asset_bytes(mapping).await.map_err(CSVAnimationLoaderError::MappingReadBytesError)?;
-                let mapping: CSVAnimationMapping = serde_json::from_slice(&mapping).map_err(CSVAnimationLoaderError::MappingParseError)?;
+                let mapping = load_context
+                    .read_asset_bytes(mapping)
+                    .await
+                    .map_err(CSVAnimationLoaderError::MappingReadBytesError)?;
+                let mapping: CSVAnimationMapping = serde_json::from_slice(&mapping)
+                    .map_err(CSVAnimationLoaderError::MappingParseError)?;
                 Some(mapping.0)
             } else {
                 None
