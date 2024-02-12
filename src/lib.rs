@@ -1,7 +1,15 @@
 use std::{num::ParseFloatError, path::PathBuf, str::FromStr, string::FromUtf8Error};
 
 use bevy::{
-    animation::{AnimationClip, EntityPath, Keyframes, VariableCurve}, app::Plugin, asset::{Asset, AssetApp, AssetLoader, AsyncReadExt, ReadAssetBytesError}, core::Name, log::info, math::{Quat, Vec3}, reflect::Reflect, transform::components::Transform, utils::hashbrown::HashMap
+    animation::{AnimationClip, EntityPath, Keyframes, VariableCurve},
+    app::Plugin,
+    asset::{Asset, AssetApp, AssetLoader, AsyncReadExt, ReadAssetBytesError},
+    core::Name,
+    log::info,
+    math::{Quat, Vec3},
+    reflect::Reflect,
+    transform::components::Transform,
+    utils::hashbrown::HashMap,
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -202,24 +210,19 @@ impl CSVAnimation {
 }
 
 impl CSVAnimation {
-    fn generate_clip(
-        self,
-        name: &str,
-        mapping: Option<&CSVAnimationMapping>,
-    ) -> AnimationClip {
+    fn generate_clip(self, name: &str, mapping: Option<&CSVAnimationMapping>) -> AnimationClip {
         let path = EntityPath {
             parts: vec![Name::new(name.to_owned())],
         };
         let mut clip = AnimationClip::default();
 
-        
         let csv_morph_order: HashMap<&str, usize> = self
             .morph_names
             .iter()
             .enumerate()
             .map(|(i, val)| (val.as_str(), i))
             .collect();
-        
+
         clip.add_curve_to_path(path, self.generate_morph_curve(mapping, &csv_morph_order));
 
         if let Some(mapping) = mapping {
@@ -229,24 +232,37 @@ impl CSVAnimation {
         clip
     }
 
-    fn generate_bone_curves(&self, clip: &mut AnimationClip, mapping: &CSVAnimationMapping, csv_morph_order: &HashMap<&str, usize>) {
-        let bones = mapping.0.iter().filter_map(|(k, v)| {
-            match k {
+    fn generate_bone_curves(
+        &self,
+        clip: &mut AnimationClip,
+        mapping: &CSVAnimationMapping,
+        csv_morph_order: &HashMap<&str, usize>,
+    ) {
+        let bones = mapping
+            .0
+            .iter()
+            .filter_map(|(k, v)| match k {
                 MappingType::Morph(_) => None,
-                MappingType::Bone(mapping) => Some((mapping.path.clone(), (mapping.clone(), v.clone()))),
-            }
-        }).group_by(|(key, _)| key.clone());
+                MappingType::Bone(mapping) => {
+                    Some((mapping.path.clone(), (mapping.clone(), v.clone())))
+                }
+            })
+            .group_by(|(key, _)| key.clone());
 
         for (bone, mappings) in bones.into_iter() {
             let curve = self.generate_bone_curve(mappings.map(|(_, v)| v), csv_morph_order);
             let path = EntityPath {
-                parts: bone.into_iter().map(Name::new).collect()
+                parts: bone.into_iter().map(Name::new).collect(),
             };
             clip.add_curve_to_path(path, curve);
         }
     }
 
-    fn generate_bone_curve(&self, mappings: impl Iterator<Item = (BoneMapping, String)>, csv_morph_order: &HashMap<&str, usize>) -> VariableCurve {
+    fn generate_bone_curve(
+        &self,
+        mappings: impl Iterator<Item = (BoneMapping, String)>,
+        csv_morph_order: &HashMap<&str, usize>,
+    ) -> VariableCurve {
         let mut keyframe_timestamps = Vec::with_capacity(self.frames.len());
         let mut keyframes = Vec::with_capacity(self.frames.len());
         let mappings = mappings.collect::<Vec<_>>();
@@ -256,18 +272,18 @@ impl CSVAnimation {
             let time = (frame as f32) * seconds_per_frame;
             keyframe_timestamps.push(time);
 
-            let mut transform = Transform::from_rotation(Quat::from_euler(bevy::math::EulerRot::XYZ, 0., 0., 0.));
-
+            let mut transform =
+                Transform::from_rotation(Quat::from_euler(bevy::math::EulerRot::XYZ, 0., 0., 0.));
 
             println!("TIME: {time}");
             for (mapping, csv_key) in mappings.iter() {
                 let result = csv_morph_order
-                .get(csv_key.as_str())
-                .copied()
-                .and_then(|i| data.morphs.get(i))
-                .copied()
-                .unwrap_or(0f32);
-            println!("Mapping {csv_key} - {mapping:?} -> {result}");
+                    .get(csv_key.as_str())
+                    .copied()
+                    .and_then(|i| data.morphs.get(i))
+                    .copied()
+                    .unwrap_or(0f32);
+                println!("Mapping {csv_key} - {mapping:?} -> {result}");
 
                 let axis = match mapping.axis {
                     Axis::X => Vec3::X,
@@ -285,7 +301,6 @@ impl CSVAnimation {
                 println!("To {}", transform.rotation.xyz());
             }
 
-
             keyframes.push(transform.rotation)
         }
 
@@ -298,7 +313,7 @@ impl CSVAnimation {
     fn generate_morph_curve(
         &self,
         mapping: Option<&CSVAnimationMapping>,
-        csv_morph_order: &HashMap<&str, usize>
+        csv_morph_order: &HashMap<&str, usize>,
     ) -> VariableCurve {
         let (num_mesh_morphs, mesh_to_csv_morph_order) = match mapping {
             Some(mapping) => {
@@ -306,8 +321,10 @@ impl CSVAnimation {
                     .0
                     .iter()
                     .filter_map(|(mapping, v)| match mapping {
-                        MappingType::Morph(_) => Some(csv_morph_order.get(v.to_string().as_str()).copied()),
-                        _ => None
+                        MappingType::Morph(_) => {
+                            Some(csv_morph_order.get(v.to_string().as_str()).copied())
+                        }
+                        _ => None,
                     })
                     .collect();
                 let num_mesh_morphs: usize = mesh_to_csv_morph_order.len();
@@ -361,7 +378,7 @@ struct CSVAnimationMapping(Vec<(MappingType, String)>);
 #[serde(untagged)]
 pub enum MappingType {
     Morph(String),
-    Bone(BoneMapping)
+    Bone(BoneMapping),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -377,7 +394,7 @@ pub enum Axis {
     Y,
     Z,
     #[serde(untagged)]
-    Vec(Vec3)
+    Vec(Vec3),
 }
 
 #[derive(Default)]
@@ -478,7 +495,8 @@ mod tests {
 
     use bevy::{
         animation::{AnimationClip, EntityPath, Keyframes},
-        core::Name, math::Vec3,
+        core::Name,
+        math::Vec3,
     };
 
     use crate::{CSVAnimation, CSVAnimationMapping, CSVParseError, Timestamp, TimestampParseError};
@@ -621,8 +639,7 @@ mod tests {
         )
         .unwrap();
 
-        let clip: AnimationClip =
-            animation.generate_clip("my_node", None);
+        let clip: AnimationClip = animation.generate_clip("my_node", None);
 
         assert!(clip.duration() - 1.33333 < 0.1);
 
@@ -667,9 +684,16 @@ mod tests {
         )
         .unwrap();
 
-        let mapping = CSVAnimationMapping([("\"shape_2\"", "shape_2"),
-            ("\"shape_1\"", "shape_1"),
-            ("\"shape_extra\"", "shape_extra")].iter().map(|(key, value)| (serde_json::from_str(key).unwrap(), value.to_string())).collect());
+        let mapping = CSVAnimationMapping(
+            [
+                ("\"shape_2\"", "shape_2"),
+                ("\"shape_1\"", "shape_1"),
+                ("\"shape_extra\"", "shape_extra"),
+            ]
+            .iter()
+            .map(|(key, value)| (serde_json::from_str(key).unwrap(), value.to_string()))
+            .collect(),
+        );
 
         let clip: AnimationClip = animation.generate_clip("my_node", Some(&mapping));
 
@@ -716,13 +740,19 @@ mod tests {
         )
         .unwrap();
 
-        let mapping: CSVAnimationMapping = CSVAnimationMapping([("\"shape_2\"", "shape_2"),
-            ("{ \"path\": [\"bone\"], \"axis\": [0, 0, 1] }", "shape_1"),
-            ("{ \"path\": [\"bone\"], \"axis\": \"X\" }", "bone_x")].iter().map(|(key, value)| {
+        let mapping: CSVAnimationMapping = CSVAnimationMapping(
+            [
+                ("\"shape_2\"", "shape_2"),
+                ("{ \"path\": [\"bone\"], \"axis\": [0, 0, 1] }", "shape_1"),
+                ("{ \"path\": [\"bone\"], \"axis\": \"X\" }", "bone_x"),
+            ]
+            .iter()
+            .map(|(key, value)| {
                 println!("Attempting to convert {key}");
                 (serde_json::from_str(key).unwrap(), value.to_string())
-            }).collect());
-
+            })
+            .collect(),
+        );
 
         let clip: AnimationClip = animation.generate_clip("my_node", Some(&mapping));
 
@@ -754,7 +784,7 @@ mod tests {
 
         let curves = clip
             .get_curves_by_path(&EntityPath {
-                parts: vec![ Name::new("bone")],
+                parts: vec![Name::new("bone")],
             })
             .unwrap()
             .first()
@@ -773,7 +803,10 @@ mod tests {
 
         assert_eq!(keyframes.len(), 5);
 
-        println!("Rotations: {:?}", keyframes.iter().map(|v| v.xyz()).collect::<Vec<_>>());
+        println!(
+            "Rotations: {:?}",
+            keyframes.iter().map(|v| v.xyz()).collect::<Vec<_>>()
+        );
         assert!((keyframes[0].xyz() - Vec3::new(0., 0., 0.)).length() < 0.0001);
         assert!((keyframes[1].xyz() - Vec3::new(0.5, 0.5, -0.5)).length() < 0.01);
     }
