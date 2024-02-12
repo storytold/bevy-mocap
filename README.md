@@ -2,6 +2,20 @@
 
 This is a project build for storyteller.ai, to provide support for importing ARKit data into bevy, and using it to drive shape keys.
 
+## Install
+
+Add this to your dependencies alongside bevy:
+```toml
+bevy = "0.12"
+bevy-facial-mocap = { git = "https://github.com/caladluin/bevy-facial-mocap" } #TODO - once ownership of the repo transfers, set this to the correct repository
+```
+
+If you add the `file_watcher` feature to bevy, this also supports hot reloading:
+```toml
+bevy = { version = "0.12", default-features = true, features = ["file_watcher"]}
+```
+
+
 ## Use
 
 Import the asset loader:
@@ -18,6 +32,7 @@ let handle = asset_server.load("recorded_test.morph_anim.json");
 let mut player = AnimationPlayer::default();
 player.play(handle.clone()).repeat();
 ```
+
 
 ## Asset Preparation
 

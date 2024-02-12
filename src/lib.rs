@@ -275,7 +275,6 @@ impl CSVAnimation {
             let mut transform =
                 Transform::from_rotation(Quat::from_euler(bevy::math::EulerRot::XYZ, 0., 0., 0.));
 
-            println!("TIME: {time}");
             for (mapping, csv_key) in mappings.iter() {
                 let result = csv_morph_order
                     .get(csv_key.as_str())
@@ -283,7 +282,6 @@ impl CSVAnimation {
                     .and_then(|i| data.morphs.get(i))
                     .copied()
                     .unwrap_or(0f32);
-                println!("Mapping {csv_key} - {mapping:?} -> {result}");
 
                 let axis = match mapping.axis {
                     Axis::X => Vec3::X,
@@ -297,10 +295,7 @@ impl CSVAnimation {
 
                 let result = result * 180f32.to_radians() * scale + offset;
 
-                println!("Rotating {axis:?} by {result:?}");
-                println!("From {}", transform.rotation.xyz());
                 transform.rotate_axis(axis, result);
-                println!("To {}", transform.rotation.xyz());
             }
 
             keyframes.push(transform.rotation)
@@ -751,7 +746,6 @@ mod tests {
             ]
             .iter()
             .map(|(key, value)| {
-                println!("Attempting to convert {key}");
                 (serde_json::from_str(key).unwrap(), value.to_string())
             })
             .collect(),
@@ -805,11 +799,7 @@ mod tests {
         };
 
         assert_eq!(keyframes.len(), 5);
-
-        println!(
-            "Rotations: {:?}",
-            keyframes.iter().map(|v| v.xyz()).collect::<Vec<_>>()
-        );
+        
         assert!((keyframes[0].xyz() - Vec3::new(0., 0., 0.)).length() < 0.0001);
         assert!((keyframes[1].xyz() - Vec3::new(0.5, 0.5, -0.5)).length() < 0.01);
     }

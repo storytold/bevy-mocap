@@ -1,6 +1,6 @@
 {
     "csv": "./20240205_shapekey_BevyImplementationFaceCap_5/shapekey_BevyImplementationFaceCap_5_ScottiPhone_cal.morph_anim.csv",
     "root_name": "pascal_Head",
-    "fps": 60,
+    "fps": 120,
     "mapping": "example_mapping.json"
 }
