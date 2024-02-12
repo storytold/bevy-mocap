@@ -4,7 +4,7 @@ use bevy::{
     pbr::{CascadeShadowConfigBuilder, DirectionalLightShadowMap},
     prelude::*,
 };
-use bevy_facial_mocap::{CSVAnimationLoader, CSVAnimationLoaderSettings};
+use bevy_facial_mocap::CSVAnimationLoader;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 fn main() {
@@ -57,11 +57,8 @@ fn setup_animation(
     mut players: Query<Entity, (With<MorphWeights>, Without<AnimationRunning>)>,
 ) {
     for entity in &mut players {
-        let handle = asset_server.load_with_settings(
-            "20240205_shapekey_BevyImplementationFaceCap_5/fake_test.morph_anim.csv",
-            |s: &mut CSVAnimationLoaderSettings| {
-                s.0.parts = vec![Name::new("pascal_Head")];
-            },
+        let handle = asset_server.load(
+            "20240205_shapekey_BevyImplementationFaceCap_5/fake_test.morph_anim.csv"
         );
         let mut player = AnimationPlayer::default();
         player.play(handle.clone()).repeat();
