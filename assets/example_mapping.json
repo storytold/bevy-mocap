@@ -50,5 +50,18 @@
     ["cheekSquintRight", "CheekSquintRight"],
     ["noseSneerLeft", "NoseSneerLeft"],
     ["noseSneerRight", "NoseSneerRight"],
-    ["tongueOut", "TongueOut"]
+    ["tongueOut", "TongueOut"],
+    [{
+        "path": ["pascal_Head"],
+        "axis": "Y"
+    }, "HeadYaw"],
+    [{
+        "path": ["pascal_Head"],
+        "axis": "X",
+        "offset": -45
+    }, "HeadPitch"],
+    [{
+        "path": ["pascal_Head"],
+        "axis": "Z"
+    }, "HeadRoll"]
 ]
