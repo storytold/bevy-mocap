@@ -388,7 +388,7 @@ pub struct BoneMapping {
     path: Vec<String>,
     axis: Axis,
     offset: Option<f32>,
-    scale: Option<f32>
+    scale: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
