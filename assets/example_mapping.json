@@ -53,15 +53,18 @@
     ["tongueOut", "TongueOut"],
     [{
         "path": ["pascal_Head"],
-        "axis": "Y"
+        "axis": "Y",
+        "scale": 0.4
     }, "HeadYaw"],
     [{
         "path": ["pascal_Head"],
         "axis": "X",
-        "offset": -45
+        "offset": -22,
+        "scale": 0.4
     }, "HeadPitch"],
     [{
         "path": ["pascal_Head"],
-        "axis": "Z"
+        "axis": "Z",
+        "scale": 0.4
     }, "HeadRoll"]
 ]

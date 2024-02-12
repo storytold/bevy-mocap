@@ -293,7 +293,9 @@ impl CSVAnimation {
                 };
                 let offset = mapping.offset.unwrap_or(0f32).to_radians();
 
-                let result = result * 180f32.to_radians() + offset;
+                let scale = mapping.scale.unwrap_or(1f32);
+
+                let result = result * 180f32.to_radians() * scale + offset;
 
                 println!("Rotating {axis:?} by {result:?}");
                 println!("From {}", transform.rotation.xyz());
@@ -386,6 +388,7 @@ pub struct BoneMapping {
     path: Vec<String>,
     axis: Axis,
     offset: Option<f32>,
+    scale: Option<f32>
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
