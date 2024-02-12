@@ -1,5 +1,6 @@
 {
     "csv": "./fake_test.csv",
     "root_name": "pascal_Head",
-    "fps": 4
+    "fps": 4,
+    "mapping": "example_mapping.json"
 }

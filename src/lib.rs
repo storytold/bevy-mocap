@@ -278,7 +278,11 @@ struct ClipInfo {
     pub csv: PathBuf,
     pub root_name: String,
     pub fps: Option<f32>,
+    pub mapping: Option<PathBuf>,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct CSVAnimationMapping(Vec<(String, String)>);
 
 #[derive(Default)]
 pub struct CSVAnimationLoader;
@@ -291,6 +295,8 @@ pub enum CSVAnimationLoaderError {
     ClipInfoParseError(serde_json::Error),
     CSVReadBytesError(ReadAssetBytesError),
     CSVStringError(FromUtf8Error),
+    MappingReadBytesError(ReadAssetBytesError),
+    MappingParseError(serde_json::Error),
 }
 
 impl std::fmt::Display for CSVAnimationLoaderError {
@@ -341,7 +347,15 @@ impl AssetLoader for CSVAnimationLoader {
                 csv_animation.frames.len()
             );
 
-            Ok(csv_animation.generate_clip(&clip_info.root_name, Option::<&[(&str, &str)]>::None))
+            let mapping = if let Some(mapping) = clip_info.mapping {
+                let mapping = load_context.read_asset_bytes(mapping).await.map_err(CSVAnimationLoaderError::MappingReadBytesError)?;
+                let mapping: CSVAnimationMapping = serde_json::from_slice(&mapping).map_err(CSVAnimationLoaderError::MappingParseError)?;
+                Some(mapping.0)
+            } else {
+                None
+            };
+
+            Ok(csv_animation.generate_clip(&clip_info.root_name, mapping.as_deref()))
         })
     }
 
