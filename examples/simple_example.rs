@@ -57,9 +57,7 @@ fn setup_animation(
     mut players: Query<Entity, (With<MorphWeights>, Without<AnimationRunning>)>,
 ) {
     for entity in &mut players {
-        let handle = asset_server.load(
-            "fake_test.morph_anim.json"
-        );
+        let handle = asset_server.load("fake_test.morph_anim.json");
         let mut player = AnimationPlayer::default();
         player.play(handle.clone()).repeat();
 

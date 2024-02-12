@@ -2,14 +2,12 @@ use std::{num::ParseFloatError, path::PathBuf, str::FromStr, string::FromUtf8Err
 
 use bevy::{
     animation::{AnimationClip, EntityPath, Keyframes, VariableCurve},
-    app::{Plugin, PostUpdate},
-    asset::{Asset, AssetApp, AssetLoader, Assets, AsyncReadExt, Handle, ReadAssetBytesError},
+    app::Plugin,
+    asset::{Asset, AssetApp, AssetLoader, AsyncReadExt, ReadAssetBytesError},
     core::Name,
-    ecs::{change_detection::DetectChanges, system::{Res, ResMut, Resource}},
     log::info,
     reflect::Reflect,
-    render::mesh::Mesh,
-    utils::{hashbrown::HashMap, HashSet},
+    utils::hashbrown::HashMap,
 };
 use serde::{Deserialize, Serialize};
 
@@ -209,7 +207,11 @@ impl CSVAnimation {
 }
 
 impl CSVAnimation {
-    fn generate_clip(self, name: &str, mapping: Option<&[(impl ToString, impl ToString)]>) -> AnimationClip {
+    fn generate_clip(
+        self,
+        name: &str,
+        mapping: Option<&[(impl ToString, impl ToString)]>,
+    ) -> AnimationClip {
         let path = EntityPath {
             parts: vec![Name::new(name.to_owned())],
         };
@@ -219,7 +221,10 @@ impl CSVAnimation {
         clip
     }
 
-    fn generate_animation_curve(self, mapping:  Option<&[(impl ToString, impl ToString)]>) -> VariableCurve {
+    fn generate_animation_curve(
+        self,
+        mapping: Option<&[(impl ToString, impl ToString)]>,
+    ) -> VariableCurve {
         let csv_morph_order: HashMap<&str, usize> = self
             .morph_names
             .iter()
@@ -231,11 +236,18 @@ impl CSVAnimation {
                 let num_mesh_morphs: usize = mapping.len();
                 let mesh_to_csv_morph_order: Vec<Option<usize>> = mapping
                     .iter()
-                    .map(|(_,v)| csv_morph_order.get(v.to_string().as_str()).copied())
+                    .map(|(_, v)| csv_morph_order.get(v.to_string().as_str()).copied())
                     .collect();
                 (num_mesh_morphs, mesh_to_csv_morph_order)
-            },
-            None => (self.morph_names.len(), self.morph_names.iter().enumerate().map(|(i, _)| Some(i)).collect()),
+            }
+            None => (
+                self.morph_names.len(),
+                self.morph_names
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| Some(i))
+                    .collect(),
+            ),
         };
 
         let mut keyframe_timestamps = Vec::with_capacity(self.frames.len());
@@ -304,11 +316,18 @@ impl AssetLoader for CSVAnimationLoader {
     ) -> bevy::utils::BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
         Box::pin(async move {
             let mut clip_info = String::new();
-            reader.read_to_string(&mut clip_info)
-            .await.map_err(CSVAnimationLoaderError::Io)?;
-            let clip_info : ClipInfo = serde_json::from_str(&clip_info).map_err(CSVAnimationLoaderError::ClipInfoParseError)?;
-            let csv_reader = load_context.read_asset_bytes(clip_info.csv).await.map_err(CSVAnimationLoaderError::CSVReadBytesError)?;
-            let csv = String::from_utf8(csv_reader).map_err(CSVAnimationLoaderError::CSVStringError)?;
+            reader
+                .read_to_string(&mut clip_info)
+                .await
+                .map_err(CSVAnimationLoaderError::Io)?;
+            let clip_info: ClipInfo = serde_json::from_str(&clip_info)
+                .map_err(CSVAnimationLoaderError::ClipInfoParseError)?;
+            let csv_reader = load_context
+                .read_asset_bytes(clip_info.csv)
+                .await
+                .map_err(CSVAnimationLoaderError::CSVReadBytesError)?;
+            let csv =
+                String::from_utf8(csv_reader).map_err(CSVAnimationLoaderError::CSVStringError)?;
             let mut csv_animation =
                 CSVAnimation::parse(&csv).map_err(CSVAnimationLoaderError::CSVParseError)?;
 
@@ -346,8 +365,6 @@ mod tests {
     use bevy::{
         animation::{AnimationClip, EntityPath, Keyframes},
         core::Name,
-        math::Vec3,
-        render::mesh::{Indices, Mesh},
     };
 
     use crate::{CSVAnimation, CSVParseError, Timestamp, TimestampParseError};
@@ -490,7 +507,8 @@ mod tests {
         )
         .unwrap();
 
-        let clip: AnimationClip = animation.generate_clip("my_node", Option::<&[(&str, &str)]>::None);
+        let clip: AnimationClip =
+            animation.generate_clip("my_node", Option::<&[(&str, &str)]>::None);
 
         assert!(clip.duration() - 1.33333 < 0.1);
 
@@ -515,9 +533,9 @@ mod tests {
 
         assert_eq!(keyframes.len(), 15);
 
-        assert!((keyframes[0] - 1.0).abs() < 0.0001); 
-        assert!((keyframes[1] - 0.0).abs() < 0.0001); 
-        assert!((keyframes[2] - 0.5).abs() < 0.0001); 
+        assert!((keyframes[0] - 1.0).abs() < 0.0001);
+        assert!((keyframes[1] - 0.0).abs() < 0.0001);
+        assert!((keyframes[2] - 0.5).abs() < 0.0001);
         assert!((keyframes[3] - 0.0).abs() < 0.0001);
         assert!((keyframes[4] + 0.4).abs() < 0.0001);
         assert!((keyframes[5] - 0.2).abs() < 0.0001);
@@ -535,7 +553,11 @@ mod tests {
         )
         .unwrap();
 
-        let mapping = vec![("shape_2", "shape_2"), ("shape_1", "shape_1"), ("shape_extra", "shape_extra")];
+        let mapping = vec![
+            ("shape_2", "shape_2"),
+            ("shape_1", "shape_1"),
+            ("shape_extra", "shape_extra"),
+        ];
 
         let clip: AnimationClip = animation.generate_clip("my_node", Some(&mapping));
 
