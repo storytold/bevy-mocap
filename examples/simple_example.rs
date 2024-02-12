@@ -58,7 +58,7 @@ fn setup_animation(
 ) {
     for entity in &mut players {
         let handle = asset_server.load(
-            "20240205_shapekey_BevyImplementationFaceCap_5/fake_test.morph_anim.csv"
+            "fake_test.morph_anim.json"
         );
         let mut player = AnimationPlayer::default();
         player.play(handle.clone()).repeat();

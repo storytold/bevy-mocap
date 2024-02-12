@@ -1,9 +1,9 @@
-use std::{num::ParseFloatError, str::FromStr};
+use std::{num::ParseFloatError, path::PathBuf, str::FromStr, string::FromUtf8Error};
 
 use bevy::{
     animation::{AnimationClip, EntityPath, Keyframes, VariableCurve},
     app::{Plugin, PostUpdate},
-    asset::{Asset, AssetApp, AssetLoader, Assets, AsyncReadExt, Handle},
+    asset::{Asset, AssetApp, AssetLoader, Assets, AsyncReadExt, Handle, ReadAssetBytesError},
     core::Name,
     ecs::{change_detection::DetectChanges, system::{Res, ResMut, Resource}},
     log::info,
@@ -105,7 +105,7 @@ pub struct CSVFrame {
 pub struct CSVAnimation {
     pub frames: Vec<CSVFrame>,
     pub morph_names: Vec<String>,
-    pub fps: u8,
+    pub fps: f32,
 }
 
 #[derive(Debug)]
@@ -203,40 +203,45 @@ impl CSVAnimation {
         Ok(CSVAnimation {
             frames,
             morph_names,
-            fps: fps + 1,
+            fps: (fps + 1) as f32,
         })
     }
 }
 
 impl CSVAnimation {
-    fn generate_clip(self, name: &str, mesh: &Mesh) -> AnimationClip {
+    fn generate_clip(self, name: &str, mapping: Option<&[(impl ToString, impl ToString)]>) -> AnimationClip {
         let path = EntityPath {
             parts: vec![Name::new(name.to_owned())],
         };
         let mut clip = AnimationClip::default();
-        clip.add_curve_to_path(path, self.generate_animation_curve(mesh));
+        clip.add_curve_to_path(path, self.generate_animation_curve(mapping));
 
         clip
     }
 
-    fn generate_animation_curve(self, mesh: &Mesh) -> VariableCurve {
-        let mesh_morph_names = mesh.morph_target_names().unwrap_or_default();
+    fn generate_animation_curve(self, mapping:  Option<&[(impl ToString, impl ToString)]>) -> VariableCurve {
         let csv_morph_order: HashMap<&str, usize> = self
             .morph_names
             .iter()
             .enumerate()
             .map(|(i, val)| (val.as_str(), i))
             .collect();
-        let num_mesh_morphs: usize = mesh_morph_names.len();
-        let mesh_to_csv_morph_order: Vec<Option<usize>> = mesh_morph_names
-            .iter()
-            .map(|v| csv_morph_order.get(v.as_str()).copied())
-            .collect();
+        let (num_mesh_morphs, mesh_to_csv_morph_order) = match mapping {
+            Some(mapping) => {
+                let num_mesh_morphs: usize = mapping.len();
+                let mesh_to_csv_morph_order: Vec<Option<usize>> = mapping
+                    .iter()
+                    .map(|(_,v)| csv_morph_order.get(v.to_string().as_str()).copied())
+                    .collect();
+                (num_mesh_morphs, mesh_to_csv_morph_order)
+            },
+            None => (self.morph_names.len(), self.morph_names.iter().enumerate().map(|(i, _)| Some(i)).collect()),
+        };
 
         let mut keyframe_timestamps = Vec::with_capacity(self.frames.len());
         let mut keyframes = Vec::with_capacity(self.frames.len() * num_mesh_morphs);
 
-        let seconds_per_frame = 1.0 / (self.fps as f32);
+        let seconds_per_frame = 1.0 / self.fps;
         for (frame, data) in self.frames.iter().enumerate() {
             let time = (frame as f32) * seconds_per_frame;
             keyframe_timestamps.push(time);
@@ -256,6 +261,13 @@ impl CSVAnimation {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct ClipInfo {
+    pub csv: PathBuf,
+    pub root_name: String,
+    pub fps: Option<f32>,
+}
+
 #[derive(Default)]
 pub struct CSVAnimationLoader;
 
@@ -264,6 +276,9 @@ pub struct CSVAnimationLoader;
 pub enum CSVAnimationLoaderError {
     Io(std::io::Error),
     CSVParseError(CSVParseError),
+    ClipInfoParseError(serde_json::Error),
+    CSVReadBytesError(ReadAssetBytesError),
+    CSVStringError(FromUtf8Error),
 }
 
 impl std::fmt::Display for CSVAnimationLoaderError {
@@ -275,7 +290,7 @@ impl std::fmt::Display for CSVAnimationLoaderError {
 impl std::error::Error for CSVAnimationLoaderError {}
 
 impl AssetLoader for CSVAnimationLoader {
-    type Asset = CSVAnimation;
+    type Asset = AnimationClip;
 
     type Settings = ();
 
@@ -285,16 +300,21 @@ impl AssetLoader for CSVAnimationLoader {
         &'a self,
         reader: &'a mut bevy::asset::io::Reader,
         _settings: &'a Self::Settings,
-        _load_context: &'a mut bevy::asset::LoadContext,
+        load_context: &'a mut bevy::asset::LoadContext,
     ) -> bevy::utils::BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
         Box::pin(async move {
-            let mut csv = String::new();
-            reader
-                .read_to_string(&mut csv)
-                .await
-                .map_err(CSVAnimationLoaderError::Io)?;
-            let csv_animation =
+            let mut clip_info = String::new();
+            reader.read_to_string(&mut clip_info)
+            .await.map_err(CSVAnimationLoaderError::Io)?;
+            let clip_info : ClipInfo = serde_json::from_str(&clip_info).map_err(CSVAnimationLoaderError::ClipInfoParseError)?;
+            let csv_reader = load_context.read_asset_bytes(clip_info.csv).await.map_err(CSVAnimationLoaderError::CSVReadBytesError)?;
+            let csv = String::from_utf8(csv_reader).map_err(CSVAnimationLoaderError::CSVStringError)?;
+            let mut csv_animation =
                 CSVAnimation::parse(&csv).map_err(CSVAnimationLoaderError::CSVParseError)?;
+
+            if let Some(fps) = clip_info.fps {
+                csv_animation.fps = fps;
+            }
 
             info!(
                 "Parsed Animation - got {} FPS with {} total frames",
@@ -302,12 +322,12 @@ impl AssetLoader for CSVAnimationLoader {
                 csv_animation.frames.len()
             );
 
-            Ok(csv_animation)
+            Ok(csv_animation.generate_clip(&clip_info.root_name, Option::<&[(&str, &str)]>::None))
         })
     }
 
     fn extensions(&self) -> &[&str] {
-        &["morph_anim.csv"]
+        &["morph_anim.json"]
     }
 }
 
@@ -444,7 +464,7 @@ mod tests {
 00:00:01:01.00, 0, 0, 0",
         )
         .unwrap();
-        assert_eq!(result.fps, 3);
+        assert!((result.fps - 3.0).abs() < 0.0001);
     }
 
     #[test]
@@ -469,22 +489,55 @@ mod tests {
 00:00:01:01.00, 0, 0, 0, -2",
         )
         .unwrap();
-        let mut mesh = Mesh::new(bevy::render::render_resource::PrimitiveTopology::TriangleList);
 
-        mesh.set_indices(Some(Indices::U16(vec![0, 1, 2])));
-        mesh.insert_attribute(
-            Mesh::ATTRIBUTE_POSITION,
-            vec![Vec3::ZERO, Vec3::ONE, Vec3::NEG_ONE],
-        );
+        let clip: AnimationClip = animation.generate_clip("my_node", Option::<&[(&str, &str)]>::None);
 
-        // Setting these in reverse order with an extra shape key and a missing one to validate resiliency
-        mesh.set_morph_target_names(vec![
-            "shape_2".to_string(),
-            "shape_1".to_string(),
-            "shape_extra".to_string(),
-        ]);
+        assert!(clip.duration() - 1.33333 < 0.1);
 
-        let clip: AnimationClip = animation.generate_clip("my_node", &mesh);
+        let curves = clip
+            .get_curves_by_path(&EntityPath {
+                parts: vec![Name::new("my_node")],
+            })
+            .unwrap()
+            .first()
+            .unwrap();
+        assert_eq!(curves.keyframe_timestamps.len(), 5);
+
+        assert!((curves.keyframe_timestamps[0] - 0.0).abs() < 0.001);
+        assert!((curves.keyframe_timestamps[1] - 0.33333).abs() < 0.001);
+        assert!((curves.keyframe_timestamps[2] - 0.66666).abs() < 0.01);
+        assert!((curves.keyframe_timestamps[3] - 1.0).abs() < 0.01);
+        assert!((curves.keyframe_timestamps[4] - 1.33333).abs() < 0.01);
+
+        let Keyframes::Weights(keyframes) = &curves.keyframes else {
+            panic!("Keyframes aren't weights")
+        };
+
+        assert_eq!(keyframes.len(), 15);
+
+        assert!((keyframes[0] - 1.0).abs() < 0.0001); 
+        assert!((keyframes[1] - 0.0).abs() < 0.0001); 
+        assert!((keyframes[2] - 0.5).abs() < 0.0001); 
+        assert!((keyframes[3] - 0.0).abs() < 0.0001);
+        assert!((keyframes[4] + 0.4).abs() < 0.0001);
+        assert!((keyframes[5] - 0.2).abs() < 0.0001);
+    }
+
+    #[test]
+    fn can_convert_an_animation_into_an_animation_clip_with_mapping() {
+        let animation = CSVAnimation::parse(
+            "timecode, blendshapecount, shape_1, shape_2, shape_missing
+00:00:00:00.00, 0, 1.0, 0, 0.5
+00:00:00:01.00, 0, 0, -0.4, 0.2
+00:00:00:02.00, 0, 0, 0, 0.4
+00:00:01:00.00, 0, 0, 0, 1
+00:00:01:01.00, 0, 0, 0, -2",
+        )
+        .unwrap();
+
+        let mapping = vec![("shape_2", "shape_2"), ("shape_1", "shape_1"), ("shape_extra", "shape_extra")];
+
+        let clip: AnimationClip = animation.generate_clip("my_node", Some(&mapping));
 
         assert!(clip.duration() - 1.33333 < 0.1);
 
