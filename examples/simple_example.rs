@@ -12,6 +12,7 @@ fn main() {
         .insert_resource(DirectionalLightShadowMap { size: 4096 })
         .add_plugins(DefaultPlugins)
         .add_plugins(WorldInspectorPlugin::new())
+        // We add the CSV Animation Loader here
         .init_asset_loader::<CSVAnimationLoader>()
         .add_systems(Startup, setup)
         .add_systems(Update, setup_animation)
@@ -32,10 +33,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             shadows_enabled: true,
             ..default()
         },
-        // This is a relatively small scene, so use tighter shadow
-        // cascade bounds than the default for better quality.
-        // We also adjusted the shadow map to be larger since we're
-        // only using a single cascade.
         cascade_shadow_config: CascadeShadowConfigBuilder {
             num_cascades: 1,
             maximum_distance: 1.6,
@@ -57,6 +54,7 @@ fn setup_animation(
     mut players: Query<Entity, (With<MorphWeights>, Without<AnimationRunning>)>,
 ) {
     for entity in &mut players {
+        // And then we can load the animation just like any other animation clip
         let handle = asset_server.load("recorded_test.morph_anim.json");
         let mut player = AnimationPlayer::default();
         player.play(handle.clone()).repeat();
