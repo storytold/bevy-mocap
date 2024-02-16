@@ -1,6 +1,13 @@
-pub mod csv_animation;
-pub mod csv_animation_mapping;
-pub mod csv_frame;
+/// This library converts Unreal's LiveLink CSV format to Bevy animation clips.
+/// It exports the [`CSVAnimationLoader`] struct, which is an asset loader for these animations.
+
+/// The main module contains the asset loader itself, and a struct defining a clip info JSON file,
+/// which is used to point to the CSV and contain additional information to assist with generating
+/// the animation clip - such as the name of the root object in the animation clip, the FPS, and
+/// the path of a mapping file
+mod csv_animation;
+mod csv_animation_mapping;
+mod csv_frame;
 
 use std::{path::PathBuf, string::FromUtf8Error};
 
@@ -9,6 +16,7 @@ use bevy::{
     asset::{AssetLoader, AsyncReadExt, ReadAssetBytesError},
     log::info,
 };
+
 use csv_animation::*;
 use csv_animation_mapping::*;
 use csv_frame::*;

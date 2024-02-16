@@ -1,3 +1,4 @@
+/// This module contains the parser for the CSV Animation itself.
 use std::num::ParseFloatError;
 
 use bevy::{asset::Asset, reflect::Reflect};
@@ -67,6 +68,9 @@ impl CSVAnimation {
             .ok_or(CSVParseError::NoData)?
             .map_err(CSVParseError::InvalidCSV)?;
 
+        // The header row contains the header for the timestamp column, a column we ignore (the number of morphs)
+        // and then the names of every morph in order. We need to keep this information for later, when we
+        // handle mapping the animation to another set of morphs.
         let morph_names: Vec<String> = header_row
             .iter()
             .enumerate()
@@ -84,8 +88,11 @@ impl CSVAnimation {
         }
 
         let mut frames = Vec::new();
+        // The CSV doesn't contain information about FPS, but we can guess by looking at the
+        // largest frame number we reach - since the frame numbers reset every second
         let mut fps: u8 = 0;
 
+        // here we iterate over every frame, and set up it's morph data and timestamp
         for result in records {
             let record = result.map_err(CSVParseError::InvalidCSV)?;
 
@@ -99,7 +106,6 @@ impl CSVAnimation {
                 let _ = iter.next().ok_or(CSVParseError::MisssingKnownHeaders)?;
                 // similarly, we already validate that there are a single morph in the CSV, so the skipped columns shouldn't be valid CSVs.
             }
-
             let morphs = iter
                 .map(|v| {
                     v.trim()
@@ -109,7 +115,7 @@ impl CSVAnimation {
                 .collect::<Result<Vec<_>, _>>()?;
 
             if fps < timestamp.frame {
-                fps = timestamp.frame;
+                fps = timestamp.frame; // this is used to guess the FPS
             }
 
             frames.push(CSVFrame { timestamp, morphs });
@@ -122,7 +128,7 @@ impl CSVAnimation {
         Ok(CSVAnimation {
             frames,
             morph_names,
-            fps: (fps + 1) as f32,
+            fps: (fps + 1) as f32, // Since frame numbers start at 0, we need to add 1 to the largest frame number to get the FPS
         })
     }
 }

@@ -4,6 +4,9 @@ use bevy::reflect::Reflect;
 
 use serde::{Deserialize, Serialize};
 
+// Neither the chrono crate nor the standard library has a good way of parsing SMPT timestamps.
+// As a result, we set one up here - and we're sticking to u8s since recording data at above 255 FPS
+// is unlikely in this context, and none of the other values should go beyond 60 (or 24 for hours)
 #[derive(
     Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Reflect, Default,
 )]
@@ -51,6 +54,7 @@ impl FromStr for Timestamp {
             return Err(TimestampParseError::TooManySegments);
         }
 
+        // The segments start with hours, but we want to start with frames and be robust to missing segments
         segments.reverse();
 
         let Some(frame) = segments.first() else {

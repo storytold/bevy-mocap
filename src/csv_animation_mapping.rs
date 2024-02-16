@@ -20,11 +20,16 @@ pub enum MappingType {
     Bone(BoneMapping),
 }
 
+/// A Bone Mapping maps the value from the CSV to a rotation in a specific axis on a bone
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BoneMapping {
+    /// the hierarchy path to the bone
     path: Vec<String>,
+    /// the axis of rotation
     axis: Axis,
+    /// an offset - in case "0" in the CSV is different from "0" in the bone hierarchy
     offset: Option<f32>,
+    /// scale - to allow you to tone the animation up or down
     scale: Option<f32>,
 }
 
@@ -39,11 +44,13 @@ pub enum Axis {
 
 impl CSVAnimation {
     pub fn generate_clip(self, name: &str, mapping: Option<&CSVAnimationMapping>) -> AnimationClip {
+        // we find the path for the root entity and create a clip
         let path = EntityPath {
             parts: vec![Name::new(name.to_owned())],
         };
         let mut clip = AnimationClip::default();
 
+        // we note the order and name of every morph in the CSV
         let csv_morph_order: HashMap<&str, usize> = self
             .morph_names
             .iter()
@@ -51,8 +58,10 @@ impl CSVAnimation {
             .map(|(i, val)| (val.as_str(), i))
             .collect();
 
+        // we generate the animation curve for the morphs themselves
         clip.add_curve_to_path(path, self.generate_morph_curve(mapping, &csv_morph_order));
 
+        // if we have a mapping file, we also generate curves for any bones we're mapped to
         if let Some(mapping) = mapping {
             self.generate_bone_curves(&mut clip, mapping, &csv_morph_order);
         }
@@ -66,6 +75,7 @@ impl CSVAnimation {
         mapping: &CSVAnimationMapping,
         csv_morph_order: &HashMap<&str, usize>,
     ) {
+        // we group all our mappings by the name of the bone, and throw out the non-bone mappings
         let bones = mapping
             .0
             .iter()
@@ -78,6 +88,7 @@ impl CSVAnimation {
             .group_by(|(key, _)| key.clone());
 
         for (bone, mappings) in bones.into_iter() {
+            // for any bone, we generate the relevant curve and add it to the clip
             let curve = self.generate_bone_curve(mappings.map(|(_, v)| v), csv_morph_order);
             let path = EntityPath {
                 parts: bone.into_iter().map(Name::new).collect(),
@@ -100,9 +111,12 @@ impl CSVAnimation {
             let time = (frame as f32) * seconds_per_frame;
             keyframe_timestamps.push(time);
 
+            // we set up a transform at rest
             let mut transform =
                 Transform::from_rotation(Quat::from_euler(bevy::math::EulerRot::XYZ, 0., 0., 0.));
 
+            // for every mapping - we grab that data from the CSV and
+            // rotate the transform accordingly.
             for (mapping, csv_key) in mappings.iter() {
                 let result = csv_morph_order
                     .get(csv_key.as_str())
@@ -125,7 +139,6 @@ impl CSVAnimation {
 
                 transform.rotate_axis(axis, result);
             }
-
             keyframes.push(transform.rotation)
         }
 
@@ -140,6 +153,7 @@ impl CSVAnimation {
         mapping: Option<&CSVAnimationMapping>,
         csv_morph_order: &HashMap<&str, usize>,
     ) -> VariableCurve {
+        // we figure out how we need to re-order morphs, going from the mesh order to the csv order
         let (num_mesh_morphs, mesh_to_csv_morph_order) = match mapping {
             Some(mapping) => {
                 let mesh_to_csv_morph_order: Vec<Option<usize>> = mapping
@@ -169,9 +183,11 @@ impl CSVAnimation {
         let mut keyframes = Vec::with_capacity(self.frames.len() * num_mesh_morphs);
 
         let seconds_per_frame = 1.0 / self.fps;
+
         for (frame, data) in self.frames.iter().enumerate() {
             let time = (frame as f32) * seconds_per_frame;
             keyframe_timestamps.push(time);
+            // we iterate over all the morphs in the mesh, and if they have a matching morph in the CSV - we grab the data for that morph
             for i in 0..num_mesh_morphs {
                 let result = mesh_to_csv_morph_order
                     .get(i)
