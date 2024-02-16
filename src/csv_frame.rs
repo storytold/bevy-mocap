@@ -1,3 +1,4 @@
+// This module defines the types needed to represent a [`CSVFrame`] - including the [`Timestamp`]
 use std::{num::ParseFloatError, str::FromStr};
 
 use bevy::reflect::Reflect;

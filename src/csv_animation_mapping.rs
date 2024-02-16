@@ -1,3 +1,4 @@
+/// This module handles the mapping between a [`CSVAnimation`] and an animation clipy
 use crate::csv_animation::*;
 use bevy::{
     animation::{AnimationClip, EntityPath, Keyframes, VariableCurve},
