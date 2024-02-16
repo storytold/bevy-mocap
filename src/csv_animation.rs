@@ -26,7 +26,21 @@ pub enum CSVParseError {
 
 impl std::fmt::Display for CSVParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("{self:?}"))
+        match self {
+            CSVParseError::NoData => f.write_str("Empty CSV File"),
+            CSVParseError::InvalidCSV(e) => f.write_str(&format!("Invalid CSV: {e}")),
+            CSVParseError::NoMorphs => f.write_str("No Morphs Available in the CSV File"),
+            CSVParseError::MisssingKnownHeaders => {
+                f.write_str("No Timestamp or Morph Count Headers")
+            }
+            CSVParseError::NoFrames => f.write_str("The CSV has 0 frames"),
+            CSVParseError::TimecodeParseError(e) => {
+                f.write_str(&format!("Couldn't parse a timecode in the CSV: {e}"))
+            }
+            CSVParseError::MorphParseError(e) => f.write_str(&format!(
+                "Couldn't parse a morph in the CSV - is it not a floating point number?: {e}"
+            )),
+        }
     }
 }
 

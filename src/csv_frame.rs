@@ -23,7 +23,15 @@ pub enum TimestampParseError {
 
 impl std::fmt::Display for TimestampParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("{self:?}"))
+        match self {
+            TimestampParseError::EmptyTimestamp => f.write_str("The timestamp is an empty string"),
+            TimestampParseError::TooManySegments => {
+                f.write_str("There are too many segments in the timestamp")
+            }
+            TimestampParseError::NumberParseError(e, s) => f.write_str(&format!(
+                "Couldn't parse one of the segments - is {s} a number?: {e}"
+            )),
+        }
     }
 }
 

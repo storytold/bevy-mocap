@@ -40,7 +40,29 @@ pub enum CSVAnimationLoaderError {
 
 impl std::fmt::Display for CSVAnimationLoaderError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("{self:?}"))
+        match self {
+            CSVAnimationLoaderError::Io(e) => {
+                f.write_str(&format!("Error accessing the CSV animation files: {e}"))
+            }
+            CSVAnimationLoaderError::CSVParseError(e) => {
+                f.write_str(&format!("Failed to parse the CSV file: {e}"))
+            }
+            CSVAnimationLoaderError::ClipInfoParseError(e) => {
+                f.write_str(&format!("Couldn't parse Clip Info file: {e}"))
+            }
+            CSVAnimationLoaderError::CSVReadBytesError(e) => {
+                f.write_str(&format!("Error while reading the CSV file: {e}"))
+            }
+            CSVAnimationLoaderError::CSVStringError(e) => f.write_str(&format!(
+                "Couldn't process CSV file - is it encoded as Utf8? {e}"
+            )),
+            CSVAnimationLoaderError::MappingReadBytesError(e) => {
+                f.write_str(&format!("Couldn't read mapping file: {e}"))
+            }
+            CSVAnimationLoaderError::MappingParseError(e) => {
+                f.write_str(&format!("Failed to parse mapping file: {e}"))
+            }
+        }
     }
 }
 
