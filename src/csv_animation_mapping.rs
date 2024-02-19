@@ -1,7 +1,7 @@
 /// This module handles the mapping between a [`CSVAnimation`] and an animation clipy
 use crate::csv_animation::*;
 use bevy::{
-    animation::{AnimationClip, EntityPath, Keyframes, VariableCurve},
+    animation::{AnimationClip, EntityPath, Interpolation, Keyframes, VariableCurve},
     core::Name,
     math::{Quat, Vec3},
     transform::components::Transform,
@@ -146,6 +146,7 @@ impl CSVAnimation {
         VariableCurve {
             keyframe_timestamps,
             keyframes: Keyframes::Rotation(keyframes),
+            interpolation: Interpolation::Linear,
         }
     }
 
@@ -201,6 +202,7 @@ impl CSVAnimation {
         VariableCurve {
             keyframe_timestamps,
             keyframes: Keyframes::Weights(keyframes),
+            interpolation: Interpolation::Linear,
         }
     }
 }

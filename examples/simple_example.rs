@@ -5,13 +5,11 @@ use bevy::{
     prelude::*,
 };
 use bevy_facial_mocap::CSVAnimationLoader;
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 fn main() {
     App::new()
         .insert_resource(DirectionalLightShadowMap { size: 4096 })
         .add_plugins(DefaultPlugins)
-        .add_plugins(WorldInspectorPlugin::new())
         // We add the CSV Animation Loader here
         .init_asset_loader::<CSVAnimationLoader>()
         .add_systems(Startup, setup)
