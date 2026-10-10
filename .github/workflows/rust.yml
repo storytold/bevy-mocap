@@ -20,9 +20,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
     - name: Sccache Action
-      uses: Mozilla-Actions/sccache-action@v0.0.4
+      uses: Mozilla-Actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
                           
     - name: Check Clippy
       run: cargo clippy --all
@@ -31,9 +31,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
     - name: Sccache Action
-      uses: Mozilla-Actions/sccache-action@v0.0.4
+      uses: Mozilla-Actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
     - name: Check Clippy
       run: cargo fmt --all
 
@@ -42,9 +42,9 @@ jobs:
     needs: [clippy, format]
   
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
     - name: Sccache Action
-      uses: Mozilla-Actions/sccache-action@v0.0.4
+      uses: Mozilla-Actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
     - name: Build
       run: cargo build --verbose
       
@@ -53,9 +53,9 @@ jobs:
     needs: [clippy, format]
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
     - run: sudo apt-get update && sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0
     - name: Sccache Action
-      uses: Mozilla-Actions/sccache-action@v0.0.4
+      uses: Mozilla-Actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
     - name: Run tests
       run: cargo test --verbose
